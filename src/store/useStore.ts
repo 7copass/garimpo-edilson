@@ -80,6 +80,7 @@ interface FinancialStore {
   }) => Promise<void>;
   updateTransaction: (id: string, data: Partial<Transaction>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
+  deleteTransactionWithReason: (id: string, reason: string) => Promise<void>;
   markTransactionAsRealized: (id: string) => Promise<void>;
 }
 
@@ -398,6 +399,18 @@ export const useStore = create<FinancialStore>((set, get) => ({
       .from('transactions')
       .delete()
       .eq('id', id);
+    if (error) throw error;
+    set((state) => ({
+      transactions: state.transactions.filter((t) => t.id !== id),
+    }));
+    get().fetchBankAccounts();
+  },
+
+  deleteTransactionWithReason: async (id, reason) => {
+    const { error } = await supabase.rpc('delete_transaction_with_reason', {
+      p_transaction_id: id,
+      p_reason: reason
+    });
     if (error) throw error;
     set((state) => ({
       transactions: state.transactions.filter((t) => t.id !== id),

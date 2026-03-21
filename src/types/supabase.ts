@@ -772,6 +772,13 @@ export type Database = {
       }
     }
     Functions: {
+      delete_transaction_with_reason: {
+        Args: {
+          p_transaction_id: string
+          p_reason: string
+        }
+        Returns: undefined
+      }
       fn_user_company_ids: { Args: never; Returns: string[] }
     }
     Enums: {

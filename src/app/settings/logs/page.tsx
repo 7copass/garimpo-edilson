@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { History, Search, User as UserIcon } from "lucide-react";
@@ -23,6 +24,7 @@ export default function AuditLogsPage() {
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showDeletionsOnly, setShowDeletionsOnly] = useState(false);
 
   useEffect(() => {
     const fetchLogs = async () => {
@@ -45,10 +47,12 @@ export default function AuditLogsPage() {
     fetchLogs();
   }, [currentCompanyId]);
 
-  const filteredLogs = logs.filter(log => 
-    log.table_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    log.action.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredLogs = logs.filter(log => {
+    const matchesSearch = log.table_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          log.action.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesDeletions = showDeletionsOnly ? log.action === 'DELETE' : true;
+    return matchesSearch && matchesDeletions;
+  });
 
   const getActionBadge = (action: string) => {
     switch (action) {
@@ -90,14 +94,24 @@ export default function AuditLogsPage() {
             <CardTitle>Histórico Recente</CardTitle>
             <CardDescription>Visualizando as últimas 100 ações realizadas.</CardDescription>
           </div>
-          <div className="relative w-64">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Filtrar tabela ou ação..."
-              className="pl-8 bg-background/50"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          <div className="flex flex-col sm:flex-row items-center gap-2">
+            <Button
+              variant={showDeletionsOnly ? "default" : "outline"}
+              onClick={() => setShowDeletionsOnly(!showDeletionsOnly)}
+              className={showDeletionsOnly ? "bg-red-500/20 text-red-500 border-red-500/50 hover:bg-red-500/30" : ""}
+              size="sm"
+            >
+              Apenas Exclusões
+            </Button>
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Filtrar tabela ou ação..."
+                className="pl-8 bg-background/50 h-9"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -145,7 +159,14 @@ export default function AuditLogsPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Badge variant="secondary" className="text-[10px] cursor-help" title={JSON.stringify(log.new_data || log.old_data)}>Ver JSON</Badge>
+                        <div className="flex flex-col items-end gap-1">
+                          <Badge variant="secondary" className="text-[10px] cursor-help" title={JSON.stringify(log.new_data || log.old_data)}>Ver JSON</Badge>
+                          {log.action === 'DELETE' && log.old_data?.deletion_reason && (
+                            <span className="text-xs text-red-500 font-medium max-w-[200px] truncate" title={log.old_data.deletion_reason}>
+                              Motivo: {log.old_data.deletion_reason}
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))

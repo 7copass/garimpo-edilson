@@ -6,18 +6,44 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FileText, Plus, Search, Trash2, Edit, Download } from "lucide-react";
+import { Download, Edit, Plus, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 export default function TransactionsPage() {
   const transactions = useStore(state => state.transactions);
   const categories = useStore(state => state.categories);
   const costCenters = useStore(state => state.costCenters);
   const loading = useStore(state => state.loading);
-  const deleteTransaction = useStore(state => state.deleteTransaction);
+  const deleteTransactionWithReason = useStore(state => state.deleteTransactionWithReason);
   
   const [searchTerm, setSearchTerm] = useState("");
+  const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
+  const [deleteReason, setDeleteReason] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteReason.trim()) {
+      toast.error("Por favor, informe o motivo da exclusão.");
+      return;
+    }
+    if (!transactionToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteTransactionWithReason(transactionToDelete, deleteReason);
+      toast.success("Movimentação excluída com sucesso.");
+      setTransactionToDelete(null);
+      setDeleteReason("");
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao excluir movimentação.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const getCategoryName = (id: string | null) => id ? categories.find(c => c.id === id)?.name || "Desconhecida" : "Sem categoria";
   const getCostCenterName = (id?: string | null) => id ? costCenters.find(c => c.id === id)?.name || "Não atribuído" : "Não atribuído";
@@ -146,7 +172,7 @@ export default function TransactionsPage() {
                             variant="ghost" 
                             size="icon" 
                             className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-500/10"
-                            onClick={() => deleteTransaction(tx.id)}
+                            onClick={() => setTransactionToDelete(tx.id)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -160,6 +186,40 @@ export default function TransactionsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={!!transactionToDelete} onOpenChange={(open) => {
+        if (!open) {
+          setTransactionToDelete(null);
+          setDeleteReason("");
+        }
+      }}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader>
+            <DialogTitle>Excluir Movimentação</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir esta movimentação? Esta ação não pode ser desfeita.
+              Para fins de auditoria, por favor informe o motivo da exclusão.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="reason" className="mb-2 block">Motivo da Exclusão <span className="text-red-500">*</span></Label>
+            <Input
+              id="reason"
+              placeholder="Ex: Lançamento duplicado, erro de valor..."
+              value={deleteReason}
+              onChange={(e) => setDeleteReason(e.target.value)}
+              className="w-full bg-background border-border"
+              required
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTransactionToDelete(null)} disabled={isDeleting}>Cancelar</Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm} disabled={isDeleting} className="bg-red-500 hover:bg-red-600 text-white">
+              {isDeleting ? "Excluindo..." : "Confirmar Exclusão"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
