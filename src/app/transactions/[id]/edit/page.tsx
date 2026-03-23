@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useStore, TransactionType, PaymentMethod, Status } from "@/store/useStore";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InputCurrency } from "@/components/ui/input-currency";
@@ -11,8 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Save, UploadCloud } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useParams } from "next/navigation";
 import imageCompression from 'browser-image-compression';
 
 const tipoLabels: Record<string, string> = {
@@ -35,14 +34,12 @@ const pagamentoLabels: Record<string, string> = {
   'BOLETO': 'Boleto',
 };
 
-export default function NewTransactionPage() {
+export default function EditTransactionPage() {
   const router = useRouter();
-  const { categories, costCenters, bankAccounts, addTransaction, fetchAll, currentCompanyId } = useStore();
+  const params = useParams();
+  const transactionId = params.id as string;
+  const { transactions, categories, costCenters, bankAccounts, updateTransaction, fetchAll, currentCompanyId } = useStore();
   
-  useEffect(() => {
-    fetchAll();
-  }, [fetchAll]);
-
   const [type, setType] = useState<TransactionType>("EXPENSE");
   const [amount, setAmount] = useState<number>(0);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -55,6 +52,30 @@ export default function NewTransactionPage() {
   const [saving, setSaving] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [isLoadingTransaction, setIsLoadingTransaction] = useState(true);
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
+
+  useEffect(() => {
+    const tx = transactions.find(t => t.id === transactionId);
+    if (tx) {
+      setType(tx.type as TransactionType);
+      setAmount(tx.amount);
+      setDate(new Date(tx.date).toISOString().split('T')[0]);
+      setDescription(tx.description || "");
+      setCategoryId(tx.category_id || "");
+      setCostCenterId(tx.cost_center_id || "");
+      setBankAccountId(tx.bank_account_id || "");
+      setPaymentMethod(tx.payment_method as PaymentMethod);
+      setStatus(tx.status as Status);
+      setIsLoadingTransaction(false);
+    } else if (transactions.length > 0) {
+      // transação não encontrada (ex: ID inválido) - pode redirecionar para a lista
+      setIsLoadingTransaction(false);
+    }
+  }, [transactions, transactionId]);
 
   // Filtra categorias baseado no tipo selecionado
   const filteredCategories = categories.filter(c => c.type === type);
@@ -101,17 +122,17 @@ export default function NewTransactionPage() {
         setUploading(false);
       }
 
-      await addTransaction({
+      await updateTransaction(transactionId, {
         type,
         amount,
         date,
         description,
-        categoryId,
-        costCenterId: costCenterId && costCenterId !== "nenhum" ? costCenterId : undefined,
-        bankAccountId: bankAccountId && bankAccountId !== "nenhum" ? bankAccountId : undefined,
-        paymentMethod,
+        category_id: categoryId,
+        cost_center_id: costCenterId && costCenterId !== "nenhum" ? costCenterId : null,
+        bank_account_id: bankAccountId && bankAccountId !== "nenhum" ? bankAccountId : null,
+        payment_method: paymentMethod,
         status,
-        attachmentUrl
+        ...(attachmentUrl && { attachment_url: attachmentUrl })
       });
       router.push("/transactions");
     } catch (err) {
@@ -120,6 +141,14 @@ export default function NewTransactionPage() {
       setUploading(false);
     }
   };
+
+  if (isLoadingTransaction) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-muted-foreground text-lg animate-pulse">Carregando movimentação...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
@@ -130,8 +159,8 @@ export default function NewTransactionPage() {
           </Button>
         </Link>
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Novo Lançamento</h2>
-          <p className="text-muted-foreground">Registre uma nova entrada ou saída.</p>
+          <h2 className="text-3xl font-bold tracking-tight">Editar Lançamento</h2>
+          <p className="text-muted-foreground">Mofifique os dados da sua entrada ou saída.</p>
         </div>
       </div>
 
@@ -275,7 +304,7 @@ export default function NewTransactionPage() {
             </div>
 
             <div className="space-y-2 pt-2">
-              <Label>Comprovante Original</Label>
+              <Label>Substituir Comprovante Opcionalmente</Label>
               <div className="border-2 border-dashed border-border rounded-lg p-6 flex flex-col items-center justify-center text-muted-foreground bg-muted/50 hover:bg-muted transition cursor-pointer relative">
                 <input 
                   type="file" 
@@ -292,7 +321,7 @@ export default function NewTransactionPage() {
                 ) : (
                   <>
                     <p className="text-sm font-medium">Clique ou arraste um PDF / Imagem</p>
-                    <p className="text-xs">Imagens são comprimidas automaticamente. PDF máx 5MB.</p>
+                    <p className="text-xs">Imagens comprimidas automaticamente. PDF apenas enviar se for substituir.</p>
                   </>
                 )}
               </div>
@@ -301,7 +330,7 @@ export default function NewTransactionPage() {
           </CardContent>
           <div className="p-6 pt-0 flex justify-end">
             <Button type="submit" disabled={saving || uploading} className="bg-[#D4AF37] text-black hover:bg-[#FDB931] w-full sm:w-auto">
-              <Save className="mr-2 h-4 w-4" /> {(saving || uploading) ? 'Salvando...' : 'Salvar Lançamento'}
+              <Save className="mr-2 h-4 w-4" /> {(saving || uploading) ? 'Salvando...' : 'Salvar Alterações'}
             </Button>
           </div>
         </form>

@@ -134,7 +134,7 @@ export default function TransactionsPage() {
                       <TableCell className="font-medium">
                         {new Date(tx.date).toLocaleDateString("pt-BR", { timeZone: 'UTC' })}
                       </TableCell>
-                      <TableCell>{tx.description || "-"}</TableCell>
+                      <TableCell className="max-w-[200px] sm:max-w-[300px] whitespace-pre-wrap break-words">{tx.description || "-"}</TableCell>
                       <TableCell>{getCategoryName(tx.category_id)}</TableCell>
                       <TableCell>{getCostCenterName(tx.cost_center_id)}</TableCell>
                       <TableCell>{paymentMethodLabels[tx.payment_method]}</TableCell>
@@ -165,9 +165,11 @@ export default function TransactionsPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                          <Link href={`/transactions/${tx.id}/edit`}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </Link>
                           <Button 
                             variant="ghost" 
                             size="icon" 
