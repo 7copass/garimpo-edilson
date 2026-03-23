@@ -321,7 +321,7 @@ export default function EditTransactionPage() {
                 ) : (
                   <>
                     <p className="text-sm font-medium">Clique ou arraste um PDF / Imagem</p>
-                    <p className="text-xs">Imagens comprimidas automaticamente. PDF apenas enviar se for substituir.</p>
+                    <p className="text-xs">Imagens comprimidas automaticamente. PDF apenas enviar se for substituir (Máx 20MB).</p>
                   </>
                 )}
               </div>

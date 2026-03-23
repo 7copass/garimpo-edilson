@@ -292,7 +292,7 @@ export default function NewTransactionPage() {
                 ) : (
                   <>
                     <p className="text-sm font-medium">Clique ou arraste um PDF / Imagem</p>
-                    <p className="text-xs">Imagens são comprimidas automaticamente. PDF máx 5MB.</p>
+                    <p className="text-xs">Imagens são comprimidas automaticamente. PDF máx 20MB.</p>
                   </>
                 )}
               </div>
